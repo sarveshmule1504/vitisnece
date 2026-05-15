@@ -1,0 +1,139 @@
+from flask import Flask, render_template, request, send_file
+from flask_cors import CORS
+from groq import Groq
+import base64
+from PIL import Image
+import os
+from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# PDF Libraries
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+app = Flask(__name__)
+CORS(app)
+
+# SETUP GROQ CLIENT
+API_KEY = os.environ.get("GROQ_API_KEY")
+client = Groq(api_key=API_KEY)
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        try:
+            leaf_file = request.files['leaf_image']
+            grape_file = request.files['grape_image']
+            sugar = request.form.get('sugar', '15.0')
+
+            # Convert images to base64 for Groq Vision (with resizing to avoid size limits)
+            def encode_image(file_storage):
+                file_storage.seek(0)
+                img = Image.open(file_storage)
+                
+                # Resize image if it's too large (Groq has strict payload limits)
+                img.thumbnail((800, 800))
+                
+                # Convert to RGB (removes alpha channel which can cause issues)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                    
+                buffer = BytesIO()
+                img.save(buffer, format="JPEG", quality=85)
+                return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+            leaf_base64 = encode_image(leaf_file)
+            grape_base64 = encode_image(grape_file)
+
+            # Fixed Indentation for the Prompt
+            prompt = f"""
+            Act as a Senior Viticulturist and Plant Pathologist. 
+            Analyze the uploaded leaf and fruit images meticulously. 
+            Input Data: Refractometer sugar reading is {sugar} Brix.
+
+            Provide a "VITISENSE Diagnostic Report" with 2-3 detailed sentences for each point:
+
+            - 🌿 DIAGNOSIS: Clearly identify the health status or specific disease name. Explain the physiological state of the vine and why this specific diagnosis was reached based on the visual evidence.
+            - 🔍 SYMPTOMS: Describe the specific lesions, necrotic spots, or discoloration patterns seen on the leaf or fruit. Explain how these symptoms interfere with photosynthesis or fruit development.
+            - 🧪 TREATMENT: Recommend specific fungicides or pesticides like Mancozeb, Myclobutanil, or Copper Hydroxide. Detail the chemical mode of action and why this particular substance is effective for the detected pathogen. 
+            - 📅 SCHEDULE: Provide a precise application timeline including frequency and total duration. Explain the importance of following this window to prevent the pathogen's lifecycle from continuing or becoming resistant.
+            - 🍇 RIPENESS: Perform a comparative analysis of the fruit's maturity using the {sugar} Brix data versus the visual coloration. Compare the current balance of sugar accumulation and acid degradation against optimal harvest parameters.
+            - 📊 MARKET: Determine the commercial destination based on quality and ripeness. Provide a final recommendation on whether to harvest immediately, wait for better parameters, or treat and re-evaluate.
+
+            Constraints: Use bullet points. Ensure every point contains 2-3 insightful, complete sentences.
+            """
+
+            # Use Groq Llama 3.2 Vision model
+            response = client.chat.completions.create(
+                model='llama-3.2-11b-vision-preview',
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{leaf_base64}"}
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{grape_base64}"}
+                            }
+                        ]
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=1024
+            )
+            
+            report = response.choices[0].message.content
+            return render_template('index.html', result=True, report=report)
+
+        except Exception as e:
+            print(f"Server Error: {e}")
+            return render_template('index.html', result=False, error=str(e))
+
+    return render_template('index.html', result=False)
+
+@app.route('/download-report', methods=['POST'])
+def download_report():
+    report_text = request.form.get('report_content')
+    if not report_text:
+        return "No report content found", 400
+        
+    buffer = BytesIO()
+    
+    # PDF Setup
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
+    styles = getSampleStyleSheet()
+    
+    # Custom Styles
+    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=18, spaceAfter=20, textColor=colors.HexColor("#a29bfe"))
+    body_style = styles['Normal']
+    body_style.fontSize = 11
+    body_style.leading = 14 
+    
+    story = []
+    story.append(Paragraph("VITISENSE PRO - OFFICIAL AGRONOMIST REPORT", title_style))
+    story.append(Spacer(1, 12))
+    
+    # Process text for PDF (Removes Markdown formatting for clean PDF display)
+    clean_text = report_text.replace("**", "").replace("#", "").replace("*", "")
+    lines = clean_text.split('\n')
+    for line in lines:
+        if line.strip():
+            story.append(Paragraph(line, body_style))
+            story.append(Spacer(1, 10))
+
+    doc.build(story)
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="VitiSense_Report.pdf")
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+

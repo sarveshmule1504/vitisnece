@@ -1,0 +1,7 @@
+Flask
+Flask-CORS
+groq
+Pillow
+reportlab
+gunicorn
+python-dotenv
