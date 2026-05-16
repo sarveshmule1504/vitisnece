@@ -1,13 +1,11 @@
 from flask import Flask, render_template, request, send_file
 from flask_cors import CORS
-from groq import Groq
-import base64
-from PIL import Image
+from google import genai
 import os
+import gc
+from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
-
-load_dotenv()
 
 # PDF Libraries
 from reportlab.lib import colors
@@ -15,41 +13,39 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
+load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
-
-# SETUP GROQ CLIENT
-API_KEY = os.environ.get("GROQ_API_KEY")
-client = Groq(api_key=API_KEY)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         try:
+            # 1. INITIALIZE CLIENT INSIDE THE ROUTE
+            # This guarantees Render has loaded the environment variables first.
+            API_KEY = os.environ.get("GEMINI_API_KEY")
+            if not API_KEY:
+                raise ValueError("API Key is missing in Render environment variables!")
+            
+            client = genai.Client(api_key=API_KEY)
+
             leaf_file = request.files['leaf_image']
             grape_file = request.files['grape_image']
             sugar = request.form.get('sugar', '15.0')
 
-            # Convert images to base64 for Groq Vision (with resizing to avoid size limits)
-            def encode_image(file_storage):
+            # We will resize the images to save memory and processing time
+            def process_image(file_storage):
                 file_storage.seek(0)
                 img = Image.open(file_storage)
-                
-                # Resize image if it's too large (Groq has strict payload limits)
                 img.thumbnail((800, 800))
-                
-                # Convert to RGB (removes alpha channel which can cause issues)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
-                    
-                buffer = BytesIO()
-                img.save(buffer, format="JPEG", quality=85)
-                return base64.b64encode(buffer.getvalue()).decode('utf-8')
+                return img
 
-            leaf_base64 = encode_image(leaf_file)
-            grape_base64 = encode_image(grape_file)
+            leaf_img = process_image(leaf_file)
+            grape_img = process_image(grape_file)
 
-            # Fixed Indentation for the Prompt
             prompt = f"""
             Act as a Senior Viticulturist and Plant Pathologist. 
             Analyze the uploaded leaf and fruit images meticulously. 
@@ -67,30 +63,20 @@ def index():
             Constraints: Use bullet points. Ensure every point contains 2-3 insightful, complete sentences.
             """
 
-            # Use Groq Llama 3.2 Vision model
-            response = client.chat.completions.create(
-                model='llama-3.2-11b-vision-preview',
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:image/jpeg;base64,{leaf_base64}"}
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {"url": f"data:image/jpeg;base64,{grape_base64}"}
-                            }
-                        ]
-                    }
-                ],
-                temperature=0.2,
-                max_tokens=1024
+            # Use Gemini API
+            response = client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=[prompt, leaf_img, grape_img]
             )
             
-            report = response.choices[0].message.content
+            report = response.text
+
+            # 2. FREE UP MEMORY
+            # This prevents Render from killing the app when processing multiple images
+            del leaf_img
+            del grape_img
+            gc.collect()
+
             return render_template('index.html', result=True, report=report)
 
         except Exception as e:
@@ -121,7 +107,7 @@ def download_report():
     story.append(Paragraph("VITISENSE PRO - OFFICIAL AGRONOMIST REPORT", title_style))
     story.append(Spacer(1, 12))
     
-    # Process text for PDF (Removes Markdown formatting for clean PDF display)
+    # Process text for PDF
     clean_text = report_text.replace("**", "").replace("#", "").replace("*", "")
     lines = clean_text.split('\n')
     for line in lines:
@@ -136,4 +122,3 @@ def download_report():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
