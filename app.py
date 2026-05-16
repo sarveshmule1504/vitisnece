@@ -65,7 +65,7 @@ def index():
 
             # Use Gemini API
             response = client.models.generate_content(
-                model='gemini-2.0-flash',
+                model='gemini-2.5-flash',
                 contents=[prompt, leaf_img, grape_img]
             )
             
