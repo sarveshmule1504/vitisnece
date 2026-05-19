@@ -30,9 +30,15 @@ def index():
             
             client = genai.Client(api_key=API_KEY)
 
-            leaf_file = request.files['leaf_image']
-            grape_file = request.files['grape_image']
+            leaf_file = request.files.get('leaf_image')
+            grape_file = request.files.get('grape_image')
             sugar = request.form.get('sugar', '15.0')
+            moisture = request.form.get('moisture', '50.0')
+
+            if not leaf_file or leaf_file.filename == '':
+                raise ValueError("Leaf image is required (upload or capture).")
+            if not grape_file or grape_file.filename == '':
+                raise ValueError("Grape image is required (upload or capture).")
 
             # We will resize the images to save memory and processing time
             def process_image(file_storage):
@@ -49,7 +55,9 @@ def index():
             prompt = f"""
             Act as a Senior Viticulturist and Plant Pathologist. 
             Analyze the uploaded leaf and fruit images meticulously. 
-            Input Data: Refractometer sugar reading is {sugar} Brix.
+            Input Data: 
+            - Refractometer sugar reading: {sugar} Brix.
+            - Moisture Level: {moisture}%.
 
             Provide a "VITISENSE Diagnostic Report" with 2-3 detailed sentences for each point:
 
@@ -57,7 +65,7 @@ def index():
             - 🔍 SYMPTOMS: Describe the specific lesions, necrotic spots, or discoloration patterns seen on the leaf or fruit. Explain how these symptoms interfere with photosynthesis or fruit development.
             - 🧪 TREATMENT: Recommend specific fungicides or pesticides like Mancozeb, Myclobutanil, or Copper Hydroxide. Detail the chemical mode of action and why this particular substance is effective for the detected pathogen. 
             - 📅 SCHEDULE: Provide a precise application timeline including frequency and total duration. Explain the importance of following this window to prevent the pathogen's lifecycle from continuing or becoming resistant.
-            - 🍇 RIPENESS: Perform a comparative analysis of the fruit's maturity by evaluating the current {sugar} Brix reading against the optimal reference parameters established in our database. Analyze the balance of sugar accumulation and acid degradation relative to those target benchmarks, and note how well the visual coloration aligns with the data-driven maturity stage.
+            - 🍇 RIPENESS & BRIX ANALYSIS: Analyze the correlation between the provided {moisture}% moisture level and the {sugar} Brix reading. Estimate and discuss the Brix in percentage given this moisture level, explaining how the current moisture state affects sugar concentration, and whether irrigation adjustments are needed for optimal harvest parameters.
             - 📊 MARKET: Determine the commercial destination based on quality and ripeness. Provide a final recommendation on whether to harvest immediately, wait for better parameters, or treat and re-evaluate.
 
             Constraints: Use bullet points. Ensure every point contains 2-3 insightful, complete sentences.
