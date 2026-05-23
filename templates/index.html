@@ -253,12 +253,12 @@
             </div>
             <div class="upload-card">
                 <div class="header-row">
-                    <label style="margin:0;">🍇 Brix Level (%)</label>
+                    <label style="margin:0;">🍇 Brix Level (1-18)</label>
                     <span id="brixPercentageDisplay"
-                        style="color: var(--secondary); font-size: 12px; font-weight: bold; background: rgba(85, 239, 196, 0.1); padding: 4px 8px; border-radius: 6px;">10%</span>
+                        style="color: var(--secondary); font-size: 12px; font-weight: bold; background: rgba(85, 239, 196, 0.1); padding: 4px 8px; border-radius: 6px;">0%</span>
                 </div>
-                <input type="range" min="1" max="18" id="brixSlider" value="10" style="width: 100%; cursor: pointer; height: 8px; border-radius: 5px; background: linear-gradient(to right, var(--primary), var(--secondary)); outline: none;">
-                <input type="hidden" name="sugar" id="hiddenSugarInput" value="10">
+                <input type="number" min="1" max="18" step="0.1" id="brixInput" placeholder="Enter Brix (1-18)" value="">
+                <input type="hidden" name="sugar" id="hiddenSugarInput" value="">
             </div>
             <button type="submit" id="analyzeBtn">GENERATE ADVISORY REPORT</button>
         </form>
@@ -370,15 +370,21 @@
             }
         });
 
-        // Brix slider control
-        const brixSlider = document.getElementById('brixSlider');
+        // Brix input control - 18 Brix = 100%
+        const brixInput = document.getElementById('brixInput');
         const brixPercentageDisplay = document.getElementById('brixPercentageDisplay');
         const hiddenSugarInput = document.getElementById('hiddenSugarInput');
 
-        brixSlider.addEventListener('input', function (e) {
+        brixInput.addEventListener('input', function (e) {
             const brixValue = parseFloat(e.target.value);
-            brixPercentageDisplay.innerText = `${brixValue}%`;
-            hiddenSugarInput.value = brixValue;
+            if (!isNaN(brixValue) && brixValue >= 1 && brixValue <= 18) {
+                const percentage = (brixValue / 18 * 100).toFixed(1);
+                brixPercentageDisplay.innerText = `${percentage}%`;
+                hiddenSugarInput.value = brixValue;
+            } else if (e.target.value === '') {
+                brixPercentageDisplay.innerText = '0%';
+                hiddenSugarInput.value = '';
+            }
         });
 
         mainForm.onsubmit = async function (e) {
