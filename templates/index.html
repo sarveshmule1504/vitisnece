@@ -253,13 +253,12 @@
             </div>
             <div class="upload-card">
                 <div class="header-row">
-                    <label style="margin:0;">💧 Moisture Level (%)</label>
-                    <span id="calculatedBrixDisplay"
-                        style="color: var(--secondary); font-size: 12px; font-weight: bold; background: rgba(85, 239, 196, 0.1); padding: 4px 8px; border-radius: 6px;">Brix:
-                        18.0%</span>
+                    <label style="margin:0;">🍇 Brix Level (%)</label>
+                    <span id="brixPercentageDisplay"
+                        style="color: var(--secondary); font-size: 12px; font-weight: bold; background: rgba(85, 239, 196, 0.1); padding: 4px 8px; border-radius: 6px;">10%</span>
                 </div>
-                <input type="number" step="0.1" id="moistureInput" placeholder="Enter moisture (e.g. 82)" value="95.0">
-                <input type="hidden" name="sugar" id="hiddenSugarInput" value="21.0">
+                <input type="range" min="1" max="18" id="brixSlider" value="10" style="width: 100%; cursor: pointer; height: 8px; border-radius: 5px; background: linear-gradient(to right, var(--primary), var(--secondary)); outline: none;">
+                <input type="hidden" name="sugar" id="hiddenSugarInput" value="10">
             </div>
             <button type="submit" id="analyzeBtn">GENERATE ADVISORY REPORT</button>
         </form>
@@ -371,22 +370,15 @@
             }
         });
 
-        // Moisture to Brix calculation
-        const moistureInput = document.getElementById('moistureInput');
-        const calculatedBrixDisplay = document.getElementById('calculatedBrixDisplay');
+        // Brix slider control
+        const brixSlider = document.getElementById('brixSlider');
+        const brixPercentageDisplay = document.getElementById('brixPercentageDisplay');
         const hiddenSugarInput = document.getElementById('hiddenSugarInput');
 
-        moistureInput.addEventListener('input', function (e) {
-            const moisture = parseFloat(e.target.value);
-            if (!isNaN(moisture)) {
-                // Direct correlation: more moisture = more Brix
-                const brix = (moisture * 0.25).toFixed(1);
-                calculatedBrixDisplay.innerText = `Brix: ${brix}%`;
-                hiddenSugarInput.value = brix;
-            } else {
-                calculatedBrixDisplay.innerText = `Brix: --%`;
-                hiddenSugarInput.value = '21.0';
-            }
+        brixSlider.addEventListener('input', function (e) {
+            const brixValue = parseFloat(e.target.value);
+            brixPercentageDisplay.innerText = `${brixValue}%`;
+            hiddenSugarInput.value = brixValue;
         });
 
         mainForm.onsubmit = async function (e) {
