@@ -51,22 +51,24 @@ def index():
             leaf_img = process_image(leaf_file)
             grape_img = process_image(grape_file)
 
-            prompt = f"""
-            Act as a Senior Viticulturist and Plant Pathologist. 
-            Analyze the uploaded leaf and fruit images meticulously. 
-            Input Data: Refractometer sugar reading is {sugar} Brix.
+           prompt = f"""
+                तुम्ही एक ज्येष्ठ द्राक्ष शेती तज्ज्ञ (Viticulturist) आणि वनस्पती रोगनिदान शास्त्रज्ञ आहात. शेतकरी बांधवांनी पाठवलेल्या द्राक्षाच्या पानाच्या आणि फळाच्या फोटोंचे बारकाईने निरीक्षण करा.
+                माहिती: रिफ्रॅक्टोमीटरवर साखरेचे प्रमाण (Sugar Reading) {sugar} Brix आहे.
 
-            Provide a "VITISENSE Diagnostic Report" with 2-3 detailed sentences for each point:
+                गावातील सामान्य शेतकऱ्यांना सहज समजेल अशा सोप्या, स्पष्ट आणि शुद्ध मराठी भाषेत "विटीसेन्स द्राक्ष रोगनिदान अहवाल" तयार करा. प्रत्येक मुद्द्याचे उत्तर २ ते ३ सोप्या वाक्यांत असावे:
 
-            - 🌿 DIAGNOSIS: Clearly identify the health status or specific disease name. Explain the physiological state of the vine and why this specific diagnosis was reached based on the visual evidence.
-            - 🔍 SYMPTOMS: Describe the specific lesions, necrotic spots, or discoloration patterns seen on the leaf or fruit. Explain how these symptoms interfere with photosynthesis or fruit development.
-            - 🧪 TREATMENT: Recommend specific fungicides or pesticides like Mancozeb, Myclobutanil, or Copper Hydroxide. Detail the chemical mode of action and why this particular substance is effective for the detected pathogen. 
-            - 📅 SCHEDULE: Provide a precise application timeline including frequency and total duration. Explain the importance of following this window to prevent the pathogen's lifecycle from continuing or becoming resistant.
-            - 🍇 RIPENESS: Perform a comparative analysis of the fruit's maturity using the {sugar} Brix data versus the visual coloration. Compare the current balance of sugar accumulation and acid degradation against optimal harvest parameters.
-            - 📊 MARKET: Determine the commercial destination based on quality and ripeness. Provide a final recommendation on whether to harvest immediately, wait for better parameters, or treat and re-evaluate.
+            - 🌿 रोगाचे नाव / निदान: द्राक्ष वेलीला नेमका कोणता रोग झाला आहे किंवा ती निरोगी आहे का, ते स्पष्ट सांगा. फोटोंवरून तुम्हाला हे कसे समजले, ते अगदी सोप्या भाषेत समजावून सांगा.
+            - 🔍 रोगाची लक्षणे: पानावरील किंवा फळावरील डाग, चट्टे किंवा बदललेला रंग याबद्दल सांगा. या लक्षणांमुळे पानांच्या अन्न तयार करण्याच्या क्षमतेवर (प्रकाशसंश्लेषण) किंवा फळांच्या वाढीवर कसा वाईट परिणाम होतोय, ते सांगा.
+            - 🧪 औषधोपचार / उपाय: बाजारात मिळणाऱ्या बुरशीनाशकांची किंवा कीटकनाशकांची नावे सुचवा (उदा. मॅन्कोझेब - Mancozeb, मायक्लोब्युटानिल - Myclobutanil, किंवा कॉपर हायड्रॉक्साईड - Copper Hydroxide). हे औषध रोगाचा नाश करण्यासाठी कसे काम करते, ते मराठीत सांगा.
+            - 📅 औषध फवारणीचे वेळापत्रक: औषध किती दिवसांच्या अंतराने आणि एकूण किती वेळा फवारणी करायची, त्याचे अचूक वेळापत्रक द्या. रोगाचा प्रादुर्भाव पूर्णपणे थांबवण्यासाठी हे वेळापत्रक पाळणे का गरजेचे आहे, ते सांगा.
+            - 🍇 द्राक्ष पिकण्याची स्थिती: साखरेचे प्रमाण ({sugar} Brix) आणि द्राक्षाचा दिसणारा रंग यांची तुलना करून द्राक्ष काढणीस तयार आहेत का ते सांगा. बाजारातील चांगल्या गोडीसाठी साखर आणि आंबटपणाचे प्रमाण कसे असावे, यावर सल्ला द्या.
+            - 📊 बाजारपेठ आणि काढणीचा सल्ला: द्राक्षाचा दर्जा आणि गोडी बघून ती कुठे विकली जाऊ शकतात ते ठरवा. द्राक्षे लगेच तोडावीत, काही दिवस वाट पाहावी, की आधी औषधोपचार करून मगच निर्णय घ्यावा, याबद्दल अंतिम सल्ला द्या.
 
-            Constraints: Use bullet points. Ensure every point contains 2-3 insightful, complete sentences.
-            """
+            नियम:
+            १. माहितीसाठी बुलेट पॉइंट्स (मुद्देसूद रचना) वापरा.
+            २. भाषा पूर्णपणे मराठी असावी (केवळ औषधांची नावे इंग्रजीत कंसात लिहिता येतील).
+            ३. प्रत्येक मुद्द्यामध्ये २ ते ३ सोपी आणि स्पष्ट वाक्ये असावीत, जेणेकरून शेतकरी ती सहज वाचू शकतील.
+                """
 
             # Use Gemini API
             response = client.models.generate_content(
